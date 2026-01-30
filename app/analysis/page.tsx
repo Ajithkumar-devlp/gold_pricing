@@ -4,6 +4,15 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
 
+// Consistent date formatting function to avoid hydration errors
+const formatDate = (date: Date | string) => {
+  const d = new Date(date)
+  const day = d.getDate().toString().padStart(2, '0')
+  const month = (d.getMonth() + 1).toString().padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
 interface GoldData {
   date: string
   price: number
@@ -25,8 +34,19 @@ export default function AnalysisPage() {
   const [profitData, setProfitData] = useState<ProfitData[]>([])
   const [investmentAmount, setInvestmentAmount] = useState<number>(50000)
   const [investmentDate, setInvestmentDate] = useState<string>('2023-01-01')
+  const [futureDate, setFutureDate] = useState<string>(() => {
+    const future = new Date()
+    future.setFullYear(future.getFullYear() + 1)
+    return future.toISOString().split('T')[0]
+  })
+  const [calculatorMode, setCalculatorMode] = useState<'historical' | 'future'>('future')
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState<'growth' | 'profit' | 'both'>('both')
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
     // Handle URL parameters from compare page
@@ -93,6 +113,52 @@ export default function AnalysisPage() {
 
   const calculateProfitAnalysis = () => {
     const currentPrice = 6750
+    
+    if (calculatorMode === 'future') {
+      // Future investment calculation - from now to future date
+      const today = new Date()
+      const targetDate = new Date(futureDate)
+      const daysToTarget = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      
+      // Calculate gold amount that can be purchased today
+      const gramsCanBuy = investmentAmount / currentPrice
+      
+      // Simple projection model (in real app, this would use more sophisticated forecasting)
+      const annualGrowthRate = 0.08 // 8% annual growth assumption
+      const dailyGrowthRate = Math.pow(1 + annualGrowthRate, 1/365) - 1
+      const projectedPrice = currentPrice * Math.pow(1 + dailyGrowthRate, daysToTarget)
+      
+      const futureValue = gramsCanBuy * projectedPrice
+      const totalProfit = futureValue - investmentAmount
+      const profitPercentage = (totalProfit / investmentAmount) * 100
+      
+      // Create projection data for different time periods from now
+      const periods = [
+        { period: '3 Months', days: 90 },
+        { period: '6 Months', days: 180 },
+        { period: '1 Year', days: 365 },
+        { period: '2 Years', days: 730 },
+        { period: '3 Years', days: 1095 }
+      ]
+
+      const profitAnalysis = periods.map(({ period, days }) => {
+        const projectedPriceForPeriod = currentPrice * Math.pow(1 + dailyGrowthRate, days)
+        const projectedValue = gramsCanBuy * projectedPriceForPeriod
+        const projectedProfit = projectedValue - investmentAmount
+        const projectedProfitPercentage = (projectedProfit / investmentAmount) * 100
+
+        return {
+          period,
+          investment: investmentAmount,
+          currentValue: Math.round(projectedValue),
+          profit: Math.round(projectedProfit),
+          profitPercentage: Math.round(projectedProfitPercentage * 100) / 100
+        }
+      })
+
+      setProfitData(profitAnalysis)
+    } else {
+      // Historical investment calculation - from past date to now
     const investmentPrice = 6200 // Assumed price at investment date
     const grams = investmentAmount / investmentPrice
     const currentValue = grams * currentPrice
@@ -123,6 +189,7 @@ export default function AnalysisPage() {
     })
 
     setProfitData(profitAnalysis)
+    }
   }
 
   const currentPrice = goldData.length > 0 ? goldData[goldData.length - 1].price : 6750
@@ -235,11 +302,11 @@ export default function AnalysisPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                    tickFormatter={(value) => formatDate(value)}
                   />
                   <YAxis />
                   <Tooltip 
-                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    labelFormatter={(value) => formatDate(value)}
                     formatter={(value: number) => [`₹${value}`, 'Price per gram']}
                   />
                   <Legend />
@@ -263,6 +330,35 @@ export default function AnalysisPage() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Profit Calculator</h2>
               
+              {/* Calculator Mode Selector */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Calculation Mode
+                </label>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setCalculatorMode('future')}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                      calculatorMode === 'future'
+                        ? 'bg-gold-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    🚀 Future Investment
+                  </button>
+                  <button
+                    onClick={() => setCalculatorMode('historical')}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                      calculatorMode === 'historical'
+                        ? 'bg-gold-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    📊 Historical Analysis
+                  </button>
+                </div>
+              </div>
+              
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -276,20 +372,74 @@ export default function AnalysisPage() {
                   />
                 </div>
                 
+                {calculatorMode === 'future' ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Target Future Date
+                    </label>
+                    <input
+                      type="date"
+                      value={futureDate}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setFutureDate(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                    />
+                  </div>
+                ) : (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Investment Date
+                      Investment Date (Historical)
                   </label>
                   <input
                     type="date"
                     value={investmentDate}
+                      max={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setInvestmentDate(e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
                   />
                 </div>
+                )}
 
                 <div className="bg-gold-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 mb-2">Investment Summary</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">
+                    {calculatorMode === 'future' ? 'Future Investment Projection' : 'Investment Summary'}
+                  </h3>
+                  {calculatorMode === 'future' ? (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        Gold you can buy today: ~{(investmentAmount / currentPrice).toFixed(2)} grams
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Current gold price: ₹{currentPrice.toLocaleString()}/gram
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Target date: {isClient ? formatDate(futureDate) : futureDate}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Days to target: {isClient ? Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0} days
+                      </p>
+                      <p className="text-sm font-semibold text-green-600">
+                        Projected value: ₹{isClient ? (() => {
+                          const days = Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                          const dailyGrowthRate = Math.pow(1.08, 1/365) - 1
+                          const projectedPrice = currentPrice * Math.pow(1 + dailyGrowthRate, days)
+                          const gramsCanBuy = investmentAmount / currentPrice
+                          return Math.round(gramsCanBuy * projectedPrice).toLocaleString()
+                        })() : '0'}
+                      </p>
+                      <p className="text-sm font-semibold text-green-600">
+                        Estimated profit: ₹{isClient ? (() => {
+                          const days = Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                          const dailyGrowthRate = Math.pow(1.08, 1/365) - 1
+                          const projectedPrice = currentPrice * Math.pow(1 + dailyGrowthRate, days)
+                          const gramsCanBuy = investmentAmount / currentPrice
+                          const futureValue = gramsCanBuy * projectedPrice
+                          return Math.round(futureValue - investmentAmount).toLocaleString()
+                        })() : '0'}
+                      </p>
+                    </>
+                  ) : (
+                    <>
                   <p className="text-sm text-gray-600">
                     Gold purchased: ~{(investmentAmount / 6200).toFixed(2)} grams
                   </p>
@@ -303,12 +453,16 @@ export default function AnalysisPage() {
                   }`}>
                     Profit/Loss: ₹{(((investmentAmount / 6200) * currentPrice) - investmentAmount).toLocaleString()}
                   </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Profit Projection</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                {calculatorMode === 'future' ? 'Future Profit Projection' : 'Historical Profit Analysis'}
+              </h2>
               
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={profitData}>
@@ -318,9 +472,18 @@ export default function AnalysisPage() {
                   <Tooltip formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Amount']} />
                   <Legend />
                   <Bar dataKey="investment" fill="#e5e7eb" name="Investment" />
-                  <Bar dataKey="currentValue" fill="#f59e0b" name="Projected Value" />
+                  <Bar dataKey="currentValue" fill="#f59e0b" name={calculatorMode === 'future' ? 'Projected Value' : 'Current Value'} />
                 </BarChart>
               </ResponsiveContainer>
+              
+              {calculatorMode === 'future' && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    <strong>Note:</strong> Future projections are based on an assumed 8% annual growth rate. 
+                    Actual returns may vary based on market conditions, economic factors, and global events.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
