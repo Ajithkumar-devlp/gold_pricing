@@ -1,0 +1,70 @@
+// Firestore Security Rules for AURUM Gold Investment App
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Users can read and write their own investment data
+    match /users/{userId}/investments/{investmentId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Users can read and write their own portfolio data
+    match /users/{userId}/portfolio/{portfolioId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Users can read and write their own price alerts
+    match /users/{userId}/alerts/{alertId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Gold prices are read-only for all authenticated users
+    match /goldPrices/{priceId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only admin/backend can write price data
+    }
+    
+    // Market data is read-only for all authenticated users
+    match /marketData/{dataId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only admin/backend can write market data
+    }
+    
+    // Platform data (gold buying platforms) is read-only for all authenticated users
+    match /platforms/{platformId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only admin can modify platform data
+    }
+    
+    // User activity/transactions
+    match /users/{userId}/transactions/{transactionId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// Firebase Storage Rules (if you plan to use storage for user uploads)
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Users can upload and access their own files
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Public assets (logos, etc.) are readable by all
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if false; // Only admin can write public assets
+    }
+  }
+}

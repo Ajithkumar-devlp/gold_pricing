@@ -39,7 +39,10 @@ export default function AnalysisPage() {
     future.setFullYear(future.getFullYear() + 1)
     return future.toISOString().split('T')[0]
   })
-  const [calculatorMode, setCalculatorMode] = useState<'historical' | 'future'>('future')
+  const [targetAmount, setTargetAmount] = useState<number>(100000)
+  const [monthlyInvestment, setMonthlyInvestment] = useState<number>(5000)
+  const [expectedGrowthRate, setExpectedGrowthRate] = useState<number>(8)
+  const [calculatorMode, setCalculatorMode] = useState<'future' | 'historical' | 'sip'>('future')
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState<'growth' | 'profit' | 'both'>('both')
   const [isClient, setIsClient] = useState(false)
@@ -67,7 +70,7 @@ export default function AnalysisPage() {
     
     fetchGoldData()
     calculateProfitAnalysis()
-  }, [searchParams, timeFilter, investmentAmount, investmentDate])
+  }, [searchParams, timeFilter, investmentAmount, investmentDate, futureDate, calculatorMode, targetAmount, monthlyInvestment, expectedGrowthRate])
 
   const fetchGoldData = async () => {
     setLoading(true)
@@ -123,14 +126,13 @@ export default function AnalysisPage() {
       // Calculate gold amount that can be purchased today
       const gramsCanBuy = investmentAmount / currentPrice
       
-      // Simple projection model (in real app, this would use more sophisticated forecasting)
-      const annualGrowthRate = 0.08 // 8% annual growth assumption
+      // Use user-defined growth rate
+      const annualGrowthRate = expectedGrowthRate / 100
       const dailyGrowthRate = Math.pow(1 + annualGrowthRate, 1/365) - 1
       const projectedPrice = currentPrice * Math.pow(1 + dailyGrowthRate, daysToTarget)
       
       const futureValue = gramsCanBuy * projectedPrice
       const totalProfit = futureValue - investmentAmount
-      const profitPercentage = (totalProfit / investmentAmount) * 100
       
       // Create projection data for different time periods from now
       const periods = [
@@ -157,38 +159,94 @@ export default function AnalysisPage() {
       })
 
       setProfitData(profitAnalysis)
+    } else if (calculatorMode === 'sip') {
+      // SIP (Systematic Investment Plan) calculation
+      const today = new Date()
+      const targetDate = new Date(futureDate)
+      const monthsToTarget = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30))
+      
+      const annualGrowthRate = expectedGrowthRate / 100
+      const monthlyGrowthRate = Math.pow(1 + annualGrowthRate, 1/12) - 1
+      
+      // Calculate SIP future value using compound interest formula
+      let totalInvestment = 0
+      let totalValue = 0
+      
+      for (let month = 1; month <= monthsToTarget; month++) {
+        totalInvestment += monthlyInvestment
+        const monthsRemaining = monthsToTarget - month + 1
+        const gramsThisMonth = monthlyInvestment / currentPrice
+        const futureValueThisInvestment = gramsThisMonth * currentPrice * Math.pow(1 + monthlyGrowthRate, monthsRemaining)
+        totalValue += futureValueThisInvestment
+      }
+      
+      const totalProfit = totalValue - totalInvestment
+      
+      // Create SIP projection data
+      const periods = [
+        { period: '6 Months', months: 6 },
+        { period: '1 Year', months: 12 },
+        { period: '2 Years', months: 24 },
+        { period: '3 Years', months: 36 },
+        { period: '5 Years', months: 60 }
+      ]
+
+      const profitAnalysis = periods.map(({ period, months }) => {
+        let sipInvestment = 0
+        let sipValue = 0
+        
+        for (let month = 1; month <= months; month++) {
+          sipInvestment += monthlyInvestment
+          const monthsRemaining = months - month + 1
+          const gramsThisMonth = monthlyInvestment / currentPrice
+          const futureValueThisInvestment = gramsThisMonth * currentPrice * Math.pow(1 + monthlyGrowthRate, monthsRemaining)
+          sipValue += futureValueThisInvestment
+        }
+        
+        const sipProfit = sipValue - sipInvestment
+        const sipProfitPercentage = (sipProfit / sipInvestment) * 100
+
+        return {
+          period,
+          investment: Math.round(sipInvestment),
+          currentValue: Math.round(sipValue),
+          profit: Math.round(sipProfit),
+          profitPercentage: Math.round(sipProfitPercentage * 100) / 100
+        }
+      })
+
+      setProfitData(profitAnalysis)
     } else {
       // Historical investment calculation - from past date to now
-    const investmentPrice = 6200 // Assumed price at investment date
-    const grams = investmentAmount / investmentPrice
-    const currentValue = grams * currentPrice
-    const profit = currentValue - investmentAmount
-    const profitPercentage = (profit / investmentAmount) * 100
+      const investmentPrice = 6200 // Assumed price at investment date
+      const grams = investmentAmount / investmentPrice
+      const currentValue = grams * currentPrice
+      const profit = currentValue - investmentAmount
+      
+      const periods = [
+        { period: '1 Month', days: 30 },
+        { period: '3 Months', days: 90 },
+        { period: '6 Months', days: 180 },
+        { period: '1 Year', days: 365 },
+        { period: '2 Years', days: 730 }
+      ]
 
-    const periods = [
-      { period: '1 Month', days: 30 },
-      { period: '3 Months', days: 90 },
-      { period: '6 Months', days: 180 },
-      { period: '1 Year', days: 365 },
-      { period: '2 Years', days: 730 }
-    ]
+      const profitAnalysis = periods.map(({ period, days }) => {
+        const projectedPrice = currentPrice + (days * 0.5) // Simple projection
+        const projectedValue = grams * projectedPrice
+        const projectedProfit = projectedValue - investmentAmount
+        const projectedProfitPercentage = (projectedProfit / investmentAmount) * 100
 
-    const profitAnalysis = periods.map(({ period, days }) => {
-      const projectedPrice = currentPrice + (days * 0.5) // Simple projection
-      const projectedValue = grams * projectedPrice
-      const projectedProfit = projectedValue - investmentAmount
-      const projectedProfitPercentage = (projectedProfit / investmentAmount) * 100
+        return {
+          period,
+          investment: investmentAmount,
+          currentValue: Math.round(projectedValue),
+          profit: Math.round(projectedProfit),
+          profitPercentage: Math.round(projectedProfitPercentage * 100) / 100
+        }
+      })
 
-      return {
-        period,
-        investment: investmentAmount,
-        currentValue: Math.round(projectedValue),
-        profit: Math.round(projectedProfit),
-        profitPercentage: Math.round(projectedProfitPercentage * 100) / 100
-      }
-    })
-
-    setProfitData(profitAnalysis)
+      setProfitData(profitAnalysis)
     }
   }
 
@@ -302,11 +360,11 @@ export default function AnalysisPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
-                    tickFormatter={(value) => formatDate(value)}
+                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
                   />
                   <YAxis />
                   <Tooltip 
-                    labelFormatter={(value) => formatDate(value)}
+                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
                     formatter={(value: number) => [`₹${value}`, 'Price per gram']}
                   />
                   <Legend />
@@ -328,51 +386,83 @@ export default function AnalysisPage() {
         {(activeSection === 'profit' || activeSection === 'both') && (
           <div className="grid lg:grid-cols-2 gap-8 mb-8">
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Profit Calculator</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Advanced Profit Calculator</h2>
               
-              {/* Calculator Mode Selector */}
+              {/* Investment Strategy Selector */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Calculation Mode
+                  Investment Strategy
                 </label>
-                <div className="flex gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <button
                     onClick={() => setCalculatorMode('future')}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    className={`px-4 py-3 rounded-lg font-semibold transition-colors text-center ${
                       calculatorMode === 'future'
                         ? 'bg-gold-500 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    🚀 Future Investment
+                    <div>🚀 Lump Sum</div>
+                    <div className="text-xs mt-1">One-time investment</div>
+                  </button>
+                  <button
+                    onClick={() => setCalculatorMode('sip')}
+                    className={`px-4 py-3 rounded-lg font-semibold transition-colors text-center ${
+                      calculatorMode === 'sip'
+                        ? 'bg-gold-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <div>📈 SIP</div>
+                    <div className="text-xs mt-1">Monthly investment</div>
                   </button>
                   <button
                     onClick={() => setCalculatorMode('historical')}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    className={`px-4 py-3 rounded-lg font-semibold transition-colors text-center ${
                       calculatorMode === 'historical'
                         ? 'bg-gold-500 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    📊 Historical Analysis
+                    <div>📊 Historical</div>
+                    <div className="text-xs mt-1">Past performance</div>
                   </button>
                 </div>
               </div>
               
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Investment Amount (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={investmentAmount}
-                    onChange={(e) => setInvestmentAmount(Number(e.target.value))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                  />
-                </div>
-                
-                {calculatorMode === 'future' ? (
+                {/* Common Fields */}
+                {calculatorMode !== 'sip' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {calculatorMode === 'future' ? 'Investment Amount (₹)' : 'Historical Investment Amount (₹)'}
+                    </label>
+                    <input
+                      type="number"
+                      value={investmentAmount}
+                      onChange={(e) => setInvestmentAmount(Number(e.target.value))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
+
+                {/* SIP Monthly Investment */}
+                {calculatorMode === 'sip' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Monthly Investment Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={monthlyInvestment}
+                      onChange={(e) => setMonthlyInvestment(Number(e.target.value))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
+
+                {/* Date Fields */}
+                {calculatorMode === 'future' || calculatorMode === 'sip' ? (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Target Future Date
@@ -386,25 +476,47 @@ export default function AnalysisPage() {
                     />
                   </div>
                 ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Investment Date (Historical)
-                  </label>
-                  <input
-                    type="date"
-                    value={investmentDate}
+                    </label>
+                    <input
+                      type="date"
+                      value={investmentDate}
                       max={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setInvestmentDate(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                  />
-                </div>
+                      onChange={(e) => setInvestmentDate(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                    />
+                  </div>
                 )}
 
+                {/* Expected Growth Rate for Future Calculations */}
+                {(calculatorMode === 'future' || calculatorMode === 'sip') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Expected Annual Growth Rate (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={expectedGrowthRate}
+                      onChange={(e) => setExpectedGrowthRate(Number(e.target.value))}
+                      min="1"
+                      max="20"
+                      step="0.5"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Typical range: 6-12% annually</p>
+                  </div>
+                )}
+
+                {/* Investment Summary */}
                 <div className="bg-gold-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-gray-900 mb-2">
-                    {calculatorMode === 'future' ? 'Future Investment Projection' : 'Investment Summary'}
+                    {calculatorMode === 'future' ? 'Future Investment Projection' : 
+                     calculatorMode === 'sip' ? 'SIP Investment Summary' : 'Investment Summary'}
                   </h3>
-                  {calculatorMode === 'future' ? (
+                  
+                  {calculatorMode === 'future' && isClient && (
                     <>
                       <p className="text-sm text-gray-600">
                         Gold you can buy today: ~{(investmentAmount / currentPrice).toFixed(2)} grams
@@ -413,46 +525,65 @@ export default function AnalysisPage() {
                         Current gold price: ₹{currentPrice.toLocaleString()}/gram
                       </p>
                       <p className="text-sm text-gray-600">
-                        Target date: {isClient ? formatDate(futureDate) : futureDate}
+                        Target date: {formatDate(futureDate)}
                       </p>
                       <p className="text-sm text-gray-600">
-                        Days to target: {isClient ? Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0} days
+                        Days to target: {Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
                       </p>
                       <p className="text-sm font-semibold text-green-600">
-                        Projected value: ₹{isClient ? (() => {
+                        Projected value: ₹{(() => {
                           const days = Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-                          const dailyGrowthRate = Math.pow(1.08, 1/365) - 1
+                          const dailyGrowthRate = Math.pow(1 + expectedGrowthRate/100, 1/365) - 1
                           const projectedPrice = currentPrice * Math.pow(1 + dailyGrowthRate, days)
                           const gramsCanBuy = investmentAmount / currentPrice
                           return Math.round(gramsCanBuy * projectedPrice).toLocaleString()
-                        })() : '0'}
+                        })()}
                       </p>
                       <p className="text-sm font-semibold text-green-600">
-                        Estimated profit: ₹{isClient ? (() => {
+                        Estimated profit: ₹{(() => {
                           const days = Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-                          const dailyGrowthRate = Math.pow(1.08, 1/365) - 1
+                          const dailyGrowthRate = Math.pow(1 + expectedGrowthRate/100, 1/365) - 1
                           const projectedPrice = currentPrice * Math.pow(1 + dailyGrowthRate, days)
                           const gramsCanBuy = investmentAmount / currentPrice
                           const futureValue = gramsCanBuy * projectedPrice
                           return Math.round(futureValue - investmentAmount).toLocaleString()
-                        })() : '0'}
+                        })()}
                       </p>
                     </>
-                  ) : (
+                  )}
+
+                  {calculatorMode === 'sip' && isClient && (
                     <>
-                  <p className="text-sm text-gray-600">
-                    Gold purchased: ~{(investmentAmount / 6200).toFixed(2)} grams
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Current value: ₹{((investmentAmount / 6200) * currentPrice).toLocaleString()}
-                  </p>
-                  <p className={`text-sm font-semibold ${
-                    ((investmentAmount / 6200) * currentPrice) - investmentAmount >= 0 
-                      ? 'text-green-600' 
-                      : 'text-red-600'
-                  }`}>
-                    Profit/Loss: ₹{(((investmentAmount / 6200) * currentPrice) - investmentAmount).toLocaleString()}
-                  </p>
+                      <p className="text-sm text-gray-600">
+                        Monthly investment: ₹{monthlyInvestment.toLocaleString()}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Investment period: {Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30))} months
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Total investment: ₹{(monthlyInvestment * Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30))).toLocaleString()}
+                      </p>
+                      <p className="text-sm font-semibold text-green-600">
+                        Expected growth rate: {expectedGrowthRate}% annually
+                      </p>
+                    </>
+                  )}
+
+                  {calculatorMode === 'historical' && (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        Gold purchased: ~{(investmentAmount / 6200).toFixed(2)} grams
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Current value: ₹{((investmentAmount / 6200) * currentPrice).toLocaleString()}
+                      </p>
+                      <p className={`text-sm font-semibold ${
+                        ((investmentAmount / 6200) * currentPrice) - investmentAmount >= 0 
+                          ? 'text-green-600' 
+                          : 'text-red-600'
+                      }`}>
+                        Profit/Loss: ₹{(((investmentAmount / 6200) * currentPrice) - investmentAmount).toLocaleString()}
+                      </p>
                     </>
                   )}
                 </div>
@@ -461,7 +592,8 @@ export default function AnalysisPage() {
 
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                {calculatorMode === 'future' ? 'Future Profit Projection' : 'Historical Profit Analysis'}
+                {calculatorMode === 'future' ? 'Future Profit Projection' : 
+                 calculatorMode === 'sip' ? 'SIP Growth Projection' : 'Historical Profit Analysis'}
               </h2>
               
               <ResponsiveContainer width="100%" height={300}>
@@ -472,15 +604,27 @@ export default function AnalysisPage() {
                   <Tooltip formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Amount']} />
                   <Legend />
                   <Bar dataKey="investment" fill="#e5e7eb" name="Investment" />
-                  <Bar dataKey="currentValue" fill="#f59e0b" name={calculatorMode === 'future' ? 'Projected Value' : 'Current Value'} />
+                  <Bar dataKey="currentValue" fill="#f59e0b" name={
+                    calculatorMode === 'future' ? 'Projected Value' : 
+                    calculatorMode === 'sip' ? 'SIP Maturity Value' : 'Current Value'
+                  } />
                 </BarChart>
               </ResponsiveContainer>
               
-              {calculatorMode === 'future' && (
+              {(calculatorMode === 'future' || calculatorMode === 'sip') && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-700">
-                    <strong>Note:</strong> Future projections are based on an assumed 8% annual growth rate. 
+                    <strong>Note:</strong> Future projections are based on your expected growth rate of {expectedGrowthRate}% annually. 
                     Actual returns may vary based on market conditions, economic factors, and global events.
+                  </p>
+                </div>
+              )}
+
+              {calculatorMode === 'sip' && (
+                <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-700">
+                    <strong>SIP Benefits:</strong> Systematic Investment Plan helps in rupee cost averaging, 
+                    reducing the impact of market volatility and building wealth over time through disciplined investing.
                   </p>
                 </div>
               )}
