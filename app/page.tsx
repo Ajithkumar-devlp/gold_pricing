@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import LoadingSpinner from '@/components/LoadingSpinner'
 
 export default function Home() {
   const [selectedGoldType, setSelectedGoldType] = useState<'physical' | 'digital' | 'both'>('both')
@@ -17,14 +18,7 @@ export default function Home() {
   }, [user, loading, router])
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner message="Loading AURUM..." />
   }
 
   if (user) {
@@ -37,7 +31,7 @@ export default function Home() {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            Make Smart Gold Investment Decisions with AURUM
+            Make Smart Gold Investment Decisions with <span className="font-bold text-gold-600 cursor-pointer">AURUM</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             Compare physical and digital gold prices across multiple platforms, analyze growth trends, 

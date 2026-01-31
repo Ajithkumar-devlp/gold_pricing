@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import UserProfile from './UserProfile'
 
 export default function Navigation() {
   const { user, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showProfileEdit, setShowProfileEdit] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -17,6 +19,11 @@ export default function Navigation() {
     }
   }
 
+  const handleProfileUpdate = () => {
+    // Refresh the page to show updated name
+    window.location.reload()
+  }
+
   return (
     <nav className="bg-white shadow-lg border-b border-gold-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -25,7 +32,7 @@ export default function Navigation() {
             <div className="flex-shrink-0 flex items-center">
               <img src="/assets/logo1.png" alt="AURUM Logo" className="h-8 w-8 mr-3" />
               <Link href="/">
-                <h1 className="text-2xl font-bold bg-clip-text text-gold cursor-pointer">
+                <h1 className="text-2xl font-bold text-gold-600 cursor-pointer">
                   AURUM
                 </h1>
               </Link>
@@ -50,9 +57,9 @@ export default function Navigation() {
                   className="flex items-center space-x-2 text-gray-700 hover:text-gold-600 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   <div className="w-8 h-8 bg-gold-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
                   </div>
-                  <span>{user.displayName || user.email}</span>
+                  <span>{user.displayName || 'User'}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -64,6 +71,15 @@ export default function Navigation() {
                       <p className="font-semibold">{user.displayName || 'User'}</p>
                       <p className="text-gray-500">{user.email}</p>
                     </div>
+                    <button
+                      onClick={() => {
+                        setShowProfileEdit(true)
+                        setShowUserMenu(false)
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Edit Profile
+                    </button>
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -98,6 +114,14 @@ export default function Navigation() {
         <div
           className="fixed inset-0 z-40"
           onClick={() => setShowUserMenu(false)}
+        />
+      )}
+
+      {/* Profile Edit Modal */}
+      {showProfileEdit && (
+        <UserProfile
+          onClose={() => setShowProfileEdit(false)}
+          onSuccess={handleProfileUpdate}
         />
       )}
     </nav>

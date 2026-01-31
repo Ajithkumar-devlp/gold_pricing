@@ -42,6 +42,12 @@ export default function RegisterPage() {
       return
     }
 
+    if (formData.displayName.trim().length < 2) {
+      setError('Full name must be at least 2 characters long')
+      setLoading(false)
+      return
+    }
+
     try {
       await signUp(formData.email, formData.password, formData.displayName)
       router.push('/')
@@ -74,7 +80,7 @@ export default function RegisterPage() {
             <img src="/assets/logo1.png" alt="AURUM Logo" className="h-16 w-16" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            Join AURUM
+            Join <span className="font-bold text-gold-600 cursor-pointer">AURUM</span>
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Start your gold investment journey today
@@ -91,18 +97,20 @@ export default function RegisterPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
-                Full Name
+                Full Name <span className="text-red-500">*</span>
               </label>
               <input
                 id="displayName"
                 name="displayName"
                 type="text"
                 required
+                minLength={2}
                 value={formData.displayName}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-gold-500 focus:border-gold-500"
-                placeholder="Enter your full name"
+                placeholder="Enter your full name (e.g., John Doe)"
               />
+              <p className="mt-1 text-xs text-gray-500">This name will be displayed in your dashboard</p>
             </div>
 
             <div>

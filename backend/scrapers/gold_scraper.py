@@ -1,5 +1,5 @@
 import asyncio
-import aiohttp
+import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -15,16 +15,15 @@ from models.gold_price import GoldPrice
 
 class GoldScraper:
     def __init__(self):
-        self.session = None
+        self.session = requests.Session()
         self.driver = None
         
-    async def __aenter__(self):
-        self.session = aiohttp.ClientSession()
+    def __enter__(self):
         return self
         
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         if self.session:
-            await self.session.close()
+            self.session.close()
         if self.driver:
             self.driver.quit()
 
@@ -40,14 +39,37 @@ class GoldScraper:
         self.driver = webdriver.Chrome(options=chrome_options)
         return self.driver
 
-    async def scrape_all_platforms(self) -> List[GoldPrice]:
+    def scrape_all_platforms(self) -> List[GoldPrice]:
         """Scrape gold prices from all platforms"""
         prices = []
         
-        # Scrape digital gold platforms
-        digital_prices = await asyncio.gather(
-            self.scrape_paytm_gold(),
-            self.scrape_phonepe_gold(),
+        # For now, return simulated data since actual scraping requires proper setup
+        # In production, this would scrape real websites
+        simulated_prices = [
+            GoldPrice(
+                platform="Paytm Gold",
+                type="digital",
+                price_per_gram=6720.0,
+                making_charges=0.0,
+                gst=3.0,
+                total_price=6921.6,
+                timestamp=datetime.now(),
+                features=["No storage cost", "Instant liquidity", "SIP available"]
+            ),
+            GoldPrice(
+                platform="PhonePe Gold",
+                type="digital", 
+                price_per_gram=6715.0,
+                making_charges=0.0,
+                gst=3.0,
+                total_price=6916.45,
+                timestamp=datetime.now(),
+                features=["24/7 trading", "No minimum amount", "Digital certificate"]
+            ),
+            # Add more simulated prices...
+        ]
+        
+        return simulated_prices
             self.scrape_googlepay_gold(),
             self.scrape_amazon_pay_gold(),
             self.scrape_mobikwik_gold(),

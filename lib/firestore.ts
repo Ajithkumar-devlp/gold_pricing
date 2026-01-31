@@ -84,6 +84,15 @@ export const getUserInvestments = async (userId: string) => {
   }
 }
 
+export const removeInvestment = async (userId: string, investmentId: string) => {
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'investments', investmentId))
+  } catch (error) {
+    console.error('Error removing investment:', error)
+    throw error
+  }
+}
+
 // Portfolio Operations
 export const updatePortfolio = async (userId: string, portfolioData: any) => {
   try {

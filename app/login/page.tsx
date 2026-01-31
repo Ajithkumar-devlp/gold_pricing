@@ -51,7 +51,7 @@ export default function LoginPage() {
             <img src="/assets/logo1.png" alt="AURUM Logo" className="h-16 w-16" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            Sign in to AURUM
+            Sign in to <span className="font-bold text-gold-600 cursor-pointer">AURUM</span>
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Access your gold investment dashboard

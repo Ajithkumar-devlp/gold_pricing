@@ -2,659 +2,684 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { usePlatformPrices } from '@/contexts/PlatformPricesContext'
+import { usePortfolio } from '@/contexts/PortfolioContext'
 
-// Consistent date formatting function to avoid hydration errors
-const formatDate = (date: Date | string) => {
-  const d = new Date(date)
-  const day = d.getDate().toString().padStart(2, '0')
-  const month = (d.getMonth() + 1).toString().padStart(2, '0')
-  const year = d.getFullYear()
-  return `${day}/${month}/${year}`
+interface MarketAnalysis {
+  goldTrend: 'bullish' | 'bearish' | 'neutral'
+  silverTrend: 'bullish' | 'bearish' | 'neutral'
+  recommendation: string
+  riskLevel: 'low' | 'medium' | 'high'
 }
 
-interface GoldData {
-  date: string
-  price: number
-  change: number
-}
-
-interface ProfitData {
-  period: string
+interface SIPProjection {
+  month: number
   investment: number
-  currentValue: number
+  goldQuantity: number
+  silverQuantity: number
+  projectedValue: number
   profit: number
   profitPercentage: number
 }
 
+interface SingleInvestmentAnalysis {
+  amount: number
+  goldWeight: number
+  silverWeight: number
+  currentValue: number
+  profit: number
+  profitPercentage: number
+  breakEvenPrice: number
+}
+
 export default function AnalysisPage() {
   const searchParams = useSearchParams()
-  const [timeFilter, setTimeFilter] = useState<'30d' | '6m' | '1y' | '5y'>('1y')
-  const [goldData, setGoldData] = useState<GoldData[]>([])
-  const [profitData, setProfitData] = useState<ProfitData[]>([])
-  const [investmentAmount, setInvestmentAmount] = useState<number>(50000)
-  const [investmentDate, setInvestmentDate] = useState<string>('2023-01-01')
-  const [futureDate, setFutureDate] = useState<string>(() => {
-    const future = new Date()
-    future.setFullYear(future.getFullYear() + 1)
-    return future.toISOString().split('T')[0]
-  })
-  const [targetAmount, setTargetAmount] = useState<number>(100000)
-  const [monthlyInvestment, setMonthlyInvestment] = useState<number>(5000)
-  const [expectedGrowthRate, setExpectedGrowthRate] = useState<number>(8)
-  const [calculatorMode, setCalculatorMode] = useState<'future' | 'historical' | 'sip'>('future')
-  const [loading, setLoading] = useState(true)
-  const [activeSection, setActiveSection] = useState<'growth' | 'profit' | 'both'>('both')
-  const [isClient, setIsClient] = useState(false)
+  const { 
+    baseGoldPrice: realTimeGoldPrice, 
+    baseSilverPrice: realTimeSilverPrice,
+    getBestGoldDeals,
+    getBestSilverDeals
+  } = usePlatformPrices()
+  
+  const { portfolio, currentGoldPrice, currentSilverPrice } = usePortfolio()
+  
+  const [activeSection, setActiveSection] = useState<'market' | 'sip' | 'single' | 'portfolio' | 'comparison'>('market')
+  
+  // SIP Analysis States
+  const [sipAmount, setSipAmount] = useState(5000)
+  const [sipDuration, setSipDuration] = useState(12)
+  const [sipMetalType, setSipMetalType] = useState<'both' | 'gold' | 'silver'>('both')
+  const [sipProjections, setSipProjections] = useState<SIPProjection[]>([])
+  
+  // Single Investment States
+  const [singleAmount, setSingleAmount] = useState(50000)
+  const [singleMetalType, setSingleMetalType] = useState<'gold' | 'silver'>('gold')
+  const [singleAnalysis, setSingleAnalysis] = useState<SingleInvestmentAnalysis | null>(null)
+  
+  // Market Analysis
+  const [marketAnalysis, setMarketAnalysis] = useState<MarketAnalysis | null>(null)
 
   useEffect(() => {
-    setIsClient(true)
-  }, [])
+    generateMarketAnalysis()
+    calculateSIPProjections()
+    calculateSingleInvestmentAnalysis()
+  }, [realTimeGoldPrice, realTimeSilverPrice, sipAmount, sipDuration, sipMetalType, singleAmount, singleMetalType])
 
-  useEffect(() => {
-    // Handle URL parameters from compare page
-    const action = searchParams.get('action')
-    const weight = searchParams.get('weight')
-    const type = searchParams.get('type')
+  const generateMarketAnalysis = () => {
+    const goldPrice = realTimeGoldPrice || currentGoldPrice
+    const silverPrice = realTimeSilverPrice || currentSilverPrice
     
-    if (action === 'profit') {
-      setActiveSection('profit')
-    } else if (action === 'growth') {
-      setActiveSection('growth')
-    }
+    // Simple trend analysis based on price levels
+    const goldTrend = goldPrice > 17000 ? 'bullish' : goldPrice < 16500 ? 'bearish' : 'neutral'
+    const silverTrend = silverPrice > 380 ? 'bullish' : silverPrice < 360 ? 'bearish' : 'neutral'
     
-    if (weight) {
-      // Convert weight to approximate investment amount (assuming ₹6200 per gram)
-      setInvestmentAmount(Number(weight) * 6200)
-    }
+    let recommendation = ''
+    let riskLevel: 'low' | 'medium' | 'high' = 'medium'
     
-    fetchGoldData()
-    calculateProfitAnalysis()
-  }, [searchParams, timeFilter, investmentAmount, investmentDate, futureDate, calculatorMode, targetAmount, monthlyInvestment, expectedGrowthRate])
-
-  const fetchGoldData = async () => {
-    setLoading(true)
-    // Simulate API call - In real implementation, this would fetch actual historical data
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    const generateMockData = () => {
-      const data: GoldData[] = []
-      const basePrice = 6500
-      const periods = {
-        '30d': 30,
-        '6m': 180,
-        '1y': 365,
-        '5y': 1825
-      }
-      
-      const days = periods[timeFilter]
-      const today = new Date()
-      
-      for (let i = days; i >= 0; i--) {
-        const date = new Date(today)
-        date.setDate(date.getDate() - i)
-        
-        // Simulate price fluctuations with general upward trend
-        const randomFactor = (Math.random() - 0.5) * 200
-        const trendFactor = (days - i) * 0.5 // Slight upward trend
-        const price = Math.round(basePrice + randomFactor + trendFactor)
-        const change = i === days ? 0 : price - data[data.length - 1]?.price || 0
-        
-        data.push({
-          date: date.toISOString().split('T')[0],
-          price,
-          change
-        })
-      }
-      
-      return data
-    }
-    
-    setGoldData(generateMockData())
-    setLoading(false)
-  }
-
-  const calculateProfitAnalysis = () => {
-    const currentPrice = 6750
-    
-    if (calculatorMode === 'future') {
-      // Future investment calculation - from now to future date
-      const today = new Date()
-      const targetDate = new Date(futureDate)
-      const daysToTarget = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      
-      // Calculate gold amount that can be purchased today
-      const gramsCanBuy = investmentAmount / currentPrice
-      
-      // Use user-defined growth rate
-      const annualGrowthRate = expectedGrowthRate / 100
-      const dailyGrowthRate = Math.pow(1 + annualGrowthRate, 1/365) - 1
-      const projectedPrice = currentPrice * Math.pow(1 + dailyGrowthRate, daysToTarget)
-      
-      const futureValue = gramsCanBuy * projectedPrice
-      const totalProfit = futureValue - investmentAmount
-      
-      // Create projection data for different time periods from now
-      const periods = [
-        { period: '3 Months', days: 90 },
-        { period: '6 Months', days: 180 },
-        { period: '1 Year', days: 365 },
-        { period: '2 Years', days: 730 },
-        { period: '3 Years', days: 1095 }
-      ]
-
-      const profitAnalysis = periods.map(({ period, days }) => {
-        const projectedPriceForPeriod = currentPrice * Math.pow(1 + dailyGrowthRate, days)
-        const projectedValue = gramsCanBuy * projectedPriceForPeriod
-        const projectedProfit = projectedValue - investmentAmount
-        const projectedProfitPercentage = (projectedProfit / investmentAmount) * 100
-
-        return {
-          period,
-          investment: investmentAmount,
-          currentValue: Math.round(projectedValue),
-          profit: Math.round(projectedProfit),
-          profitPercentage: Math.round(projectedProfitPercentage * 100) / 100
-        }
-      })
-
-      setProfitData(profitAnalysis)
-    } else if (calculatorMode === 'sip') {
-      // SIP (Systematic Investment Plan) calculation
-      const today = new Date()
-      const targetDate = new Date(futureDate)
-      const monthsToTarget = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30))
-      
-      const annualGrowthRate = expectedGrowthRate / 100
-      const monthlyGrowthRate = Math.pow(1 + annualGrowthRate, 1/12) - 1
-      
-      // Calculate SIP future value using compound interest formula
-      let totalInvestment = 0
-      let totalValue = 0
-      
-      for (let month = 1; month <= monthsToTarget; month++) {
-        totalInvestment += monthlyInvestment
-        const monthsRemaining = monthsToTarget - month + 1
-        const gramsThisMonth = monthlyInvestment / currentPrice
-        const futureValueThisInvestment = gramsThisMonth * currentPrice * Math.pow(1 + monthlyGrowthRate, monthsRemaining)
-        totalValue += futureValueThisInvestment
-      }
-      
-      const totalProfit = totalValue - totalInvestment
-      
-      // Create SIP projection data
-      const periods = [
-        { period: '6 Months', months: 6 },
-        { period: '1 Year', months: 12 },
-        { period: '2 Years', months: 24 },
-        { period: '3 Years', months: 36 },
-        { period: '5 Years', months: 60 }
-      ]
-
-      const profitAnalysis = periods.map(({ period, months }) => {
-        let sipInvestment = 0
-        let sipValue = 0
-        
-        for (let month = 1; month <= months; month++) {
-          sipInvestment += monthlyInvestment
-          const monthsRemaining = months - month + 1
-          const gramsThisMonth = monthlyInvestment / currentPrice
-          const futureValueThisInvestment = gramsThisMonth * currentPrice * Math.pow(1 + monthlyGrowthRate, monthsRemaining)
-          sipValue += futureValueThisInvestment
-        }
-        
-        const sipProfit = sipValue - sipInvestment
-        const sipProfitPercentage = (sipProfit / sipInvestment) * 100
-
-        return {
-          period,
-          investment: Math.round(sipInvestment),
-          currentValue: Math.round(sipValue),
-          profit: Math.round(sipProfit),
-          profitPercentage: Math.round(sipProfitPercentage * 100) / 100
-        }
-      })
-
-      setProfitData(profitAnalysis)
+    if (goldTrend === 'bullish' && silverTrend === 'bullish') {
+      recommendation = 'Strong market conditions. Consider increasing investments in both metals.'
+      riskLevel = 'low'
+    } else if (goldTrend === 'bearish' && silverTrend === 'bearish') {
+      recommendation = 'Market correction phase. Excellent opportunity for SIP investments.'
+      riskLevel = 'high'
     } else {
-      // Historical investment calculation - from past date to now
-      const investmentPrice = 6200 // Assumed price at investment date
-      const grams = investmentAmount / investmentPrice
-      const currentValue = grams * currentPrice
-      const profit = currentValue - investmentAmount
+      recommendation = 'Mixed market signals. Maintain balanced portfolio with regular SIP.'
+      riskLevel = 'medium'
+    }
+    
+    setMarketAnalysis({ goldTrend, silverTrend, recommendation, riskLevel })
+  }
+
+  const calculateSIPProjections = () => {
+    const goldPrice = realTimeGoldPrice || currentGoldPrice
+    const silverPrice = realTimeSilverPrice || currentSilverPrice
+    
+    const projections: SIPProjection[] = []
+    let totalInvestment = 0
+    let totalGoldQuantity = 0
+    let totalSilverQuantity = 0
+    
+    // Projected annual growth rates
+    const goldGrowthRate = 0.10 // 10% annual
+    const silverGrowthRate = 0.15 // 15% annual
+    
+    for (let month = 1; month <= sipDuration; month++) {
+      totalInvestment += sipAmount
       
-      const periods = [
-        { period: '1 Month', days: 30 },
-        { period: '3 Months', days: 90 },
-        { period: '6 Months', days: 180 },
-        { period: '1 Year', days: 365 },
-        { period: '2 Years', days: 730 }
-      ]
-
-      const profitAnalysis = periods.map(({ period, days }) => {
-        const projectedPrice = currentPrice + (days * 0.5) // Simple projection
-        const projectedValue = grams * projectedPrice
-        const projectedProfit = projectedValue - investmentAmount
-        const projectedProfitPercentage = (projectedProfit / investmentAmount) * 100
-
-        return {
-          period,
-          investment: investmentAmount,
-          currentValue: Math.round(projectedValue),
-          profit: Math.round(projectedProfit),
-          profitPercentage: Math.round(projectedProfitPercentage * 100) / 100
-        }
+      // Calculate allocation based on metal type
+      let goldInvestment = 0
+      let silverInvestment = 0
+      
+      if (sipMetalType === 'gold') {
+        goldInvestment = sipAmount
+      } else if (sipMetalType === 'silver') {
+        silverInvestment = sipAmount
+      } else {
+        goldInvestment = sipAmount * 0.6
+        silverInvestment = sipAmount * 0.4
+      }
+      
+      // Calculate quantities purchased this month
+      const monthlyGoldQuantity = goldInvestment / goldPrice
+      const monthlySilverQuantity = silverInvestment / silverPrice
+      
+      totalGoldQuantity += monthlyGoldQuantity
+      totalSilverQuantity += monthlySilverQuantity
+      
+      // Project future prices
+      const monthsFromNow = month
+      const projectedGoldPrice = goldPrice * Math.pow(1 + goldGrowthRate / 12, monthsFromNow)
+      const projectedSilverPrice = silverPrice * Math.pow(1 + silverGrowthRate / 12, monthsFromNow)
+      
+      const projectedValue = (totalGoldQuantity * projectedGoldPrice) + (totalSilverQuantity * projectedSilverPrice)
+      const profit = projectedValue - totalInvestment
+      const profitPercentage = (profit / totalInvestment) * 100
+      
+      projections.push({
+        month,
+        investment: totalInvestment,
+        goldQuantity: totalGoldQuantity,
+        silverQuantity: totalSilverQuantity,
+        projectedValue: Math.round(projectedValue),
+        profit: Math.round(profit),
+        profitPercentage: Math.round(profitPercentage * 100) / 100
       })
+    }
+    
+    setSipProjections(projections)
+  }
 
-      setProfitData(profitAnalysis)
+  const calculateSingleInvestmentAnalysis = () => {
+    const goldPrice = realTimeGoldPrice || currentGoldPrice
+    const silverPrice = realTimeSilverPrice || currentSilverPrice
+    
+    const price = singleMetalType === 'gold' ? goldPrice : silverPrice
+    const weight = singleAmount / price
+    
+    // Project 6-month value
+    const growthRate = singleMetalType === 'gold' ? 0.10 : 0.15
+    const projectedPrice = price * Math.pow(1 + growthRate, 0.5) // 6 months
+    const currentValue = weight * projectedPrice
+    const profit = currentValue - singleAmount
+    const profitPercentage = (profit / singleAmount) * 100
+    
+    // Break-even calculation
+    const breakEvenPrice = singleAmount / weight
+    
+    const analysis: SingleInvestmentAnalysis = {
+      amount: singleAmount,
+      goldWeight: singleMetalType === 'gold' ? weight : 0,
+      silverWeight: singleMetalType === 'silver' ? weight : 0,
+      currentValue: Math.round(currentValue),
+      profit: Math.round(profit),
+      profitPercentage: Math.round(profitPercentage * 100) / 100,
+      breakEvenPrice: Math.round(breakEvenPrice)
+    }
+    
+    setSingleAnalysis(analysis)
+  }
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'bullish': return '📈'
+      case 'bearish': return '📉'
+      default: return '➡️'
     }
   }
 
-  const currentPrice = goldData.length > 0 ? goldData[goldData.length - 1].price : 6750
-  const priceChange = goldData.length > 1 ? goldData[goldData.length - 1].price - goldData[goldData.length - 2].price : 0
-  const changePercentage = goldData.length > 1 ? (priceChange / goldData[goldData.length - 2].price) * 100 : 0
+  const getTrendColor = (trend: string) => {
+    switch (trend) {
+      case 'bullish': return 'text-green-600'
+      case 'bearish': return 'text-red-600'
+      default: return 'text-blue-600'
+    }
+  }
+
+  const getRiskColor = (risk: string) => {
+    switch (risk) {
+      case 'low': return 'bg-green-100 text-green-800'
+      case 'high': return 'bg-red-100 text-red-800'
+      default: return 'bg-yellow-100 text-yellow-800'
+    }
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            AURUM Gold Growth Analysis
+            AURUM Investment Analysis
           </h1>
           <p className="text-lg text-gray-600">
-            Analyze historical trends and calculate profit potential
+            Comprehensive Analysis Tools for Smart Investment Decisions
           </p>
         </div>
 
-        {/* Current Price Card */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Current Gold Price</h3>
-              <p className="text-3xl font-bold text-gold-600">₹{currentPrice.toLocaleString()}</p>
-              <p className="text-sm text-gray-500">per gram</p>
+        {/* Current Prices Dashboard */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Gold (Au)</h3>
+              <span className="text-2xl">🥇</span>
             </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">24h Change</h3>
-              <p className={`text-3xl font-bold ${priceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {priceChange >= 0 ? '+' : ''}₹{priceChange}
-              </p>
-              <p className={`text-sm ${priceChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {changePercentage >= 0 ? '+' : ''}{changePercentage.toFixed(2)}%
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-3xl font-bold text-gold-600">₹{(realTimeGoldPrice || currentGoldPrice).toLocaleString()}</p>
+                <p className="text-sm text-gray-500">per gram</p>
+              </div>
+              <div className="text-right">
+                {marketAnalysis && (
+                  <div className={`text-lg font-bold ${getTrendColor(marketAnalysis.goldTrend)}`}>
+                    {getTrendIcon(marketAnalysis.goldTrend)} {marketAnalysis.goldTrend.toUpperCase()}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Market Trend</h3>
-              <p className={`text-3xl font-bold ${priceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {priceChange >= 0 ? '📈' : '📉'}
-              </p>
-              <p className={`text-sm ${priceChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {priceChange >= 0 ? 'Bullish' : 'Bearish'}
-              </p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Silver (Ag)</h3>
+              <span className="text-2xl">🥈</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-3xl font-bold text-gray-600">₹{(realTimeSilverPrice || currentSilverPrice).toLocaleString()}</p>
+                <p className="text-sm text-gray-500">per gram</p>
+              </div>
+              <div className="text-right">
+                {marketAnalysis && (
+                  <div className={`text-lg font-bold ${getTrendColor(marketAnalysis.silverTrend)}`}>
+                    {getTrendIcon(marketAnalysis.silverTrend)} {marketAnalysis.silverTrend.toUpperCase()}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Section Navigation */}
+        {/* Analysis Controls */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <div className="flex flex-wrap gap-2 justify-center">
-            {[
-              { key: 'both', label: 'Complete Analysis', icon: '📊' },
-              { key: 'growth', label: 'Growth Analysis', icon: '📈' },
-              { key: 'profit', label: 'Profit Calculator', icon: '💰' }
-            ].map(({ key, label, icon }) => (
-              <button
-                key={key}
-                onClick={() => setActiveSection(key as any)}
-                className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
-                  activeSection === key
-                    ? 'bg-gold-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <span>{icon}</span>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Time Filter - Show only for growth analysis */}
-        {(activeSection === 'growth' || activeSection === 'both') && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Select Time Period</h3>
-            <div className="flex flex-wrap gap-2 justify-center">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Analysis Type</label>
+            <div className="grid grid-cols-5 gap-2">
               {[
-                { key: '30d', label: 'Last 30 Days' },
-                { key: '6m', label: '6 Months' },
-                { key: '1y', label: '1 Year' },
-                { key: '5y', label: '5 Years' }
-              ].map(({ key, label }) => (
+                { key: 'market', label: 'Market Analysis', icon: '📊' },
+                { key: 'sip', label: 'SIP Analysis', icon: '💰' },
+                { key: 'single', label: 'Single Investment', icon: '💎' },
+                { key: 'portfolio', label: 'Portfolio Review', icon: '📈' },
+                { key: 'comparison', label: 'Platform Compare', icon: '🔍' }
+              ].map(({ key, label, icon }) => (
                 <button
                   key={key}
-                  onClick={() => setTimeFilter(key as any)}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                    timeFilter === key
+                  onClick={() => setActiveSection(key as any)}
+                  className={`px-3 py-2 rounded-lg font-semibold transition-colors flex items-center gap-1 text-sm ${
+                    activeSection === key
                       ? 'bg-gold-500 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
+                  <span>{icon}</span>
                   {label}
                 </button>
               ))}
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Price Chart - Show only for growth analysis */}
-        {(activeSection === 'growth' || activeSection === 'both') && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Gold Price Trend</h2>
-            {loading ? (
-              <div className="h-96 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={goldData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date" 
-                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
-                  />
-                  <YAxis />
-                  <Tooltip 
-                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                    formatter={(value: number) => [`₹${value}`, 'Price per gram']}
-                  />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="price" 
-                    stroke="#f59e0b" 
-                    strokeWidth={3}
-                    dot={false}
-                    name="Gold Price (₹/gram)"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        )}
-
-        {/* Profit Calculator - Show only for profit analysis */}
-        {(activeSection === 'profit' || activeSection === 'both') && (
-          <div className="grid lg:grid-cols-2 gap-8 mb-8">
+        {/* Market Analysis Section */}
+        {activeSection === 'market' && marketAnalysis && (
+          <div className="space-y-8 mb-8">
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Advanced Profit Calculator</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Market Analysis & Recommendations</h2>
               
-              {/* Investment Strategy Selector */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Investment Strategy
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <button
-                    onClick={() => setCalculatorMode('future')}
-                    className={`px-4 py-3 rounded-lg font-semibold transition-colors text-center ${
-                      calculatorMode === 'future'
-                        ? 'bg-gold-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <div>🚀 Lump Sum</div>
-                    <div className="text-xs mt-1">One-time investment</div>
-                  </button>
-                  <button
-                    onClick={() => setCalculatorMode('sip')}
-                    className={`px-4 py-3 rounded-lg font-semibold transition-colors text-center ${
-                      calculatorMode === 'sip'
-                        ? 'bg-gold-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <div>📈 SIP</div>
-                    <div className="text-xs mt-1">Monthly investment</div>
-                  </button>
-                  <button
-                    onClick={() => setCalculatorMode('historical')}
-                    className={`px-4 py-3 rounded-lg font-semibold transition-colors text-center ${
-                      calculatorMode === 'historical'
-                        ? 'bg-gold-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <div>📊 Historical</div>
-                    <div className="text-xs mt-1">Past performance</div>
-                  </button>
+              <div className="grid md:grid-cols-3 gap-6 mb-6">
+                <div className="text-center">
+                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getRiskColor(marketAnalysis.riskLevel)}`}>
+                    Risk Level: {marketAnalysis.riskLevel.toUpperCase()}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className={`text-lg font-bold ${getTrendColor(marketAnalysis.goldTrend)}`}>
+                    Gold: {getTrendIcon(marketAnalysis.goldTrend)} {marketAnalysis.goldTrend.toUpperCase()}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className={`text-lg font-bold ${getTrendColor(marketAnalysis.silverTrend)}`}>
+                    Silver: {getTrendIcon(marketAnalysis.silverTrend)} {marketAnalysis.silverTrend.toUpperCase()}
+                  </div>
                 </div>
               </div>
               
-              <div className="space-y-4">
-                {/* Common Fields */}
-                {calculatorMode !== 'sip' && (
+              <div className="bg-blue-50 p-6 rounded-lg">
+                <h3 className="text-lg font-semibold text-blue-800 mb-3">Investment Recommendation</h3>
+                <p className="text-blue-700">{marketAnalysis.recommendation}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SIP Analysis Section */}
+        {activeSection === 'sip' && (
+          <div className="space-y-8 mb-8">
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* SIP Configuration */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">SIP Analysis Configuration</h2>
+                
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {calculatorMode === 'future' ? 'Investment Amount (₹)' : 'Historical Investment Amount (₹)'}
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Monthly SIP Amount (₹)</label>
                     <input
                       type="number"
-                      value={investmentAmount}
-                      onChange={(e) => setInvestmentAmount(Number(e.target.value))}
+                      value={sipAmount}
+                      onChange={(e) => setSipAmount(Number(e.target.value))}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                      min="1000"
+                      step="500"
                     />
                   </div>
-                )}
-
-                {/* SIP Monthly Investment */}
-                {calculatorMode === 'sip' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Monthly Investment Amount (₹)
-                    </label>
-                    <input
-                      type="number"
-                      value={monthlyInvestment}
-                      onChange={(e) => setMonthlyInvestment(Number(e.target.value))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                    />
-                  </div>
-                )}
-
-                {/* Date Fields */}
-                {calculatorMode === 'future' || calculatorMode === 'sip' ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Target Future Date
-                    </label>
-                    <input
-                      type="date"
-                      value={futureDate}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setFutureDate(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Investment Date (Historical)
-                    </label>
-                    <input
-                      type="date"
-                      value={investmentDate}
-                      max={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setInvestmentDate(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                    />
-                  </div>
-                )}
-
-                {/* Expected Growth Rate for Future Calculations */}
-                {(calculatorMode === 'future' || calculatorMode === 'sip') && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Expected Annual Growth Rate (%)
-                    </label>
-                    <input
-                      type="number"
-                      value={expectedGrowthRate}
-                      onChange={(e) => setExpectedGrowthRate(Number(e.target.value))}
-                      min="1"
-                      max="20"
-                      step="0.5"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Typical range: 6-12% annually</p>
-                  </div>
-                )}
-
-                {/* Investment Summary */}
-                <div className="bg-gold-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 mb-2">
-                    {calculatorMode === 'future' ? 'Future Investment Projection' : 
-                     calculatorMode === 'sip' ? 'SIP Investment Summary' : 'Investment Summary'}
-                  </h3>
                   
-                  {calculatorMode === 'future' && isClient && (
-                    <>
-                      <p className="text-sm text-gray-600">
-                        Gold you can buy today: ~{(investmentAmount / currentPrice).toFixed(2)} grams
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Current gold price: ₹{currentPrice.toLocaleString()}/gram
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Target date: {formatDate(futureDate)}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Days to target: {Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
-                      </p>
-                      <p className="text-sm font-semibold text-green-600">
-                        Projected value: ₹{(() => {
-                          const days = Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-                          const dailyGrowthRate = Math.pow(1 + expectedGrowthRate/100, 1/365) - 1
-                          const projectedPrice = currentPrice * Math.pow(1 + dailyGrowthRate, days)
-                          const gramsCanBuy = investmentAmount / currentPrice
-                          return Math.round(gramsCanBuy * projectedPrice).toLocaleString()
-                        })()}
-                      </p>
-                      <p className="text-sm font-semibold text-green-600">
-                        Estimated profit: ₹{(() => {
-                          const days = Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-                          const dailyGrowthRate = Math.pow(1 + expectedGrowthRate/100, 1/365) - 1
-                          const projectedPrice = currentPrice * Math.pow(1 + dailyGrowthRate, days)
-                          const gramsCanBuy = investmentAmount / currentPrice
-                          const futureValue = gramsCanBuy * projectedPrice
-                          return Math.round(futureValue - investmentAmount).toLocaleString()
-                        })()}
-                      </p>
-                    </>
-                  )}
-
-                  {calculatorMode === 'sip' && isClient && (
-                    <>
-                      <p className="text-sm text-gray-600">
-                        Monthly investment: ₹{monthlyInvestment.toLocaleString()}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Investment period: {Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30))} months
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Total investment: ₹{(monthlyInvestment * Math.ceil((new Date(futureDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30))).toLocaleString()}
-                      </p>
-                      <p className="text-sm font-semibold text-green-600">
-                        Expected growth rate: {expectedGrowthRate}% annually
-                      </p>
-                    </>
-                  )}
-
-                  {calculatorMode === 'historical' && (
-                    <>
-                      <p className="text-sm text-gray-600">
-                        Gold purchased: ~{(investmentAmount / 6200).toFixed(2)} grams
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Current value: ₹{((investmentAmount / 6200) * currentPrice).toLocaleString()}
-                      </p>
-                      <p className={`text-sm font-semibold ${
-                        ((investmentAmount / 6200) * currentPrice) - investmentAmount >= 0 
-                          ? 'text-green-600' 
-                          : 'text-red-600'
-                      }`}>
-                        Profit/Loss: ₹{(((investmentAmount / 6200) * currentPrice) - investmentAmount).toLocaleString()}
-                      </p>
-                    </>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Duration (Months)</label>
+                    <input
+                      type="number"
+                      value={sipDuration}
+                      onChange={(e) => setSipDuration(Number(e.target.value))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                      min="6"
+                      max="60"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Metal Preference</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { key: 'both', label: 'Both', icon: '🥇🥈' },
+                        { key: 'gold', label: 'Gold Only', icon: '🥇' },
+                        { key: 'silver', label: 'Silver Only', icon: '🥈' }
+                      ].map(({ key, label, icon }) => (
+                        <button
+                          key={key}
+                          onClick={() => setSipMetalType(key as any)}
+                          className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${
+                            sipMetalType === key
+                              ? 'bg-gold-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          <span>{icon}</span>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                {calculatorMode === 'future' ? 'Future Profit Projection' : 
-                 calculatorMode === 'sip' ? 'SIP Growth Projection' : 'Historical Profit Analysis'}
-              </h2>
-              
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={profitData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="period" />
-                  <YAxis />
-                  <Tooltip formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Amount']} />
-                  <Legend />
-                  <Bar dataKey="investment" fill="#e5e7eb" name="Investment" />
-                  <Bar dataKey="currentValue" fill="#f59e0b" name={
-                    calculatorMode === 'future' ? 'Projected Value' : 
-                    calculatorMode === 'sip' ? 'SIP Maturity Value' : 'Current Value'
-                  } />
-                </BarChart>
-              </ResponsiveContainer>
-              
-              {(calculatorMode === 'future' || calculatorMode === 'sip') && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-700">
-                    <strong>Note:</strong> Future projections are based on your expected growth rate of {expectedGrowthRate}% annually. 
-                    Actual returns may vary based on market conditions, economic factors, and global events.
-                  </p>
-                </div>
-              )}
-
-              {calculatorMode === 'sip' && (
-                <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                  <p className="text-sm text-green-700">
-                    <strong>SIP Benefits:</strong> Systematic Investment Plan helps in rupee cost averaging, 
-                    reducing the impact of market volatility and building wealth over time through disciplined investing.
-                  </p>
-                </div>
-              )}
+              {/* SIP Projections */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">SIP Projections</h2>
+                
+                {sipProjections.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <div className="text-sm text-blue-600">Total Investment</div>
+                        <div className="text-xl font-bold text-blue-800">₹{sipProjections[sipProjections.length - 1]?.investment.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <div className="text-sm text-green-600">Projected Value</div>
+                        <div className="text-xl font-bold text-green-800">₹{sipProjections[sipProjections.length - 1]?.projectedValue.toLocaleString()}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <div className="text-sm text-purple-600">Expected Profit</div>
+                        <div className="text-xl font-bold text-purple-800">₹{sipProjections[sipProjections.length - 1]?.profit.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-orange-50 p-4 rounded-lg">
+                        <div className="text-sm text-orange-600">Return %</div>
+                        <div className="text-xl font-bold text-orange-800">{sipProjections[sipProjections.length - 1]?.profitPercentage}%</div>
+                      </div>
+                    </div>
+                    
+                    {sipMetalType !== 'silver' && (
+                      <div className="bg-gold-50 p-4 rounded-lg">
+                        <div className="text-sm text-gold-600">Gold Accumulated</div>
+                        <div className="text-lg font-bold text-gold-800">{sipProjections[sipProjections.length - 1]?.goldQuantity.toFixed(3)}g</div>
+                      </div>
+                    )}
+                    
+                    {sipMetalType !== 'gold' && (
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <div className="text-sm text-slate-600">Silver Accumulated</div>
+                        <div className="text-lg font-bold text-slate-800">{sipProjections[sipProjections.length - 1]?.silverQuantity.toFixed(3)}g</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* Insights */}
+        {/* Single Investment Analysis */}
+        {activeSection === 'single' && (
+          <div className="space-y-8 mb-8">
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Single Investment Configuration */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Single Investment Analysis</h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Investment Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={singleAmount}
+                      onChange={(e) => setSingleAmount(Number(e.target.value))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                      min="10000"
+                      step="5000"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Metal Choice</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { key: 'gold', label: 'Gold', icon: '🥇' },
+                        { key: 'silver', label: 'Silver', icon: '🥈' }
+                      ].map(({ key, label, icon }) => (
+                        <button
+                          key={key}
+                          onClick={() => setSingleMetalType(key as any)}
+                          className={`px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                            singleMetalType === key
+                              ? 'bg-gold-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          <span>{icon}</span>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Single Investment Results */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Investment Analysis Results</h2>
+                
+                {singleAnalysis && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <div className="text-sm text-blue-600">Investment Amount</div>
+                        <div className="text-xl font-bold text-blue-800">₹{singleAnalysis.amount.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <div className="text-sm text-green-600">6-Month Projection</div>
+                        <div className="text-xl font-bold text-green-800">₹{singleAnalysis.currentValue.toLocaleString()}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <div className="text-sm text-purple-600">Expected Profit</div>
+                        <div className="text-xl font-bold text-purple-800">₹{singleAnalysis.profit.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-orange-50 p-4 rounded-lg">
+                        <div className="text-sm text-orange-600">Return %</div>
+                        <div className="text-xl font-bold text-orange-800">{singleAnalysis.profitPercentage}%</div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="text-sm text-gray-600">
+                        {singleMetalType === 'gold' ? 'Gold Weight' : 'Silver Weight'}
+                      </div>
+                      <div className="text-lg font-bold text-gray-800">
+                        {singleMetalType === 'gold' 
+                          ? `${singleAnalysis.goldWeight.toFixed(3)}g` 
+                          : `${singleAnalysis.silverWeight.toFixed(3)}g`
+                        }
+                      </div>
+                    </div>
+                    
+                    <div className="bg-yellow-50 p-4 rounded-lg">
+                      <div className="text-sm text-yellow-600">Break-even Price</div>
+                      <div className="text-lg font-bold text-yellow-800">₹{singleAnalysis.breakEvenPrice.toLocaleString()}/g</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Portfolio Analysis */}
+        {activeSection === 'portfolio' && (
+          <div className="space-y-8 mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Portfolio Analysis</h2>
+              
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="text-sm text-blue-600">Total Investment</div>
+                  <div className="text-xl font-bold text-blue-800">₹{portfolio.totalInvestment.toLocaleString()}</div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="text-sm text-green-600">Current Value</div>
+                  <div className="text-xl font-bold text-green-800">₹{portfolio.currentValue.toLocaleString()}</div>
+                </div>
+                <div className={`p-4 rounded-lg ${portfolio.totalReturns >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                  <div className={`text-sm ${portfolio.totalReturns >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Total Returns</div>
+                  <div className={`text-xl font-bold ${portfolio.totalReturns >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>
+                    {portfolio.totalReturns >= 0 ? '+' : ''}₹{Math.abs(portfolio.totalReturns).toLocaleString()}
+                  </div>
+                </div>
+                <div className={`p-4 rounded-lg ${portfolio.returnsPercentage >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                  <div className={`text-sm ${portfolio.returnsPercentage >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Return %</div>
+                  <div className={`text-xl font-bold ${portfolio.returnsPercentage >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>
+                    {portfolio.returnsPercentage >= 0 ? '+' : ''}{portfolio.returnsPercentage}%
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-6 mt-6">
+                <div className="bg-gold-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gold-800 mb-3">Gold Holdings</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gold-600">Quantity:</span>
+                      <span className="font-bold text-gold-800">{portfolio.totalGoldQuantity}g</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gold-600">Value:</span>
+                      <span className="font-bold text-gold-800">₹{portfolio.goldValue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gold-600">Returns:</span>
+                      <span className={`font-bold ${portfolio.goldReturns >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {portfolio.goldReturns >= 0 ? '+' : ''}₹{Math.abs(portfolio.goldReturns).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-slate-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-slate-800 mb-3">Silver Holdings</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Quantity:</span>
+                      <span className="font-bold text-slate-800">{portfolio.totalSilverQuantity}g</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Value:</span>
+                      <span className="font-bold text-slate-800">₹{portfolio.silverValue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Returns:</span>
+                      <span className={`font-bold ${portfolio.silverReturns >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {portfolio.silverReturns >= 0 ? '+' : ''}₹{Math.abs(portfolio.silverReturns).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Platform Comparison */}
+        {activeSection === 'comparison' && (
+          <div className="space-y-8 mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Platform Comparison Analysis</h2>
+              
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Best Gold Platforms */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gold-800 mb-4">🥇 Best Gold Platforms</h3>
+                  <div className="space-y-3">
+                    {getBestGoldDeals().slice(0, 5).map((platform, index) => (
+                      <div key={platform.platform} className="flex items-center justify-between p-3 bg-gold-50 rounded-lg">
+                        <div>
+                          <div className="font-medium text-gold-800">{platform.platform}</div>
+                          <div className="text-sm text-gold-600">{platform.type}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-gold-800">₹{platform.goldPricePerGram.toLocaleString()}/g</div>
+                          <div className="text-xs text-gold-600">
+                            {platform.goldMakingCharges > 0 ? `+₹${platform.goldMakingCharges}/g` : 'No charges'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Best Silver Platforms */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">🥈 Best Silver Platforms</h3>
+                  <div className="space-y-3">
+                    {getBestSilverDeals().slice(0, 5).map((platform, index) => (
+                      <div key={platform.platform} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <div>
+                          <div className="font-medium text-slate-800">{platform.platform}</div>
+                          <div className="text-sm text-slate-600">{platform.type}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-slate-800">₹{platform.silverPricePerGram.toLocaleString()}/g</div>
+                          <div className="text-xs text-slate-600">
+                            {platform.silverMakingCharges > 0 ? `+₹${platform.silverMakingCharges}/g` : 'No charges'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Investment Insights */}
         <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Investment Insights</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Investment Insights & Tips</h2>
           
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-900 mb-2">💡 Best Time to Buy</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-2">💡 SIP Strategy</h3>
               <p className="text-sm text-blue-700">
-                Historical data suggests buying during market dips for better long-term returns.
+                Systematic Investment Plans help average out price volatility and build wealth gradually through disciplined investing.
               </p>
             </div>
             
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-green-900 mb-2">📈 Long-term Outlook</h3>
+            <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg">
+              <h3 className="font-semibold text-green-900 mb-2">📈 Single Investment</h3>
               <p className="text-sm text-green-700">
-                Gold has shown consistent growth over 5+ year periods, making it a stable investment.
+                Lump sum investments work best during market corrections. Monitor price trends for optimal entry points.
               </p>
             </div>
             
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-purple-900 mb-2">⚖️ Digital vs Physical</h3>
+            <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg">
+              <h3 className="font-semibold text-purple-900 mb-2">⚖️ Portfolio Mix</h3>
               <p className="text-sm text-purple-700">
-                Digital gold offers better liquidity, while physical gold provides tangible security.
+                Maintain 60-70% gold and 30-40% silver allocation for balanced risk-return profile in precious metals portfolio.
+              </p>
+            </div>
+            
+            <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg">
+              <h3 className="font-semibold text-orange-900 mb-2">🎯 Long-term View</h3>
+              <p className="text-sm text-orange-700">
+                Historical data shows precious metals deliver superior returns over 5+ year periods, making them ideal for long-term wealth creation.
               </p>
             </div>
           </div>

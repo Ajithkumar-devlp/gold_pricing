@@ -11,6 +11,7 @@ import {
   updateProfile
 } from 'firebase/auth'
 import { auth, googleProvider } from '@/lib/firebase'
+import { createUserProfile } from '@/lib/firestore'
 
 interface AuthContextType {
   user: User | null
@@ -56,6 +57,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(result.user, { displayName })
+      
+      // Create user profile in Firestore
+      await createUserProfile(result.user.uid, {
+        displayName,
+        email,
+        createdAt: new Date().toISOString(),
+        provider: 'email'
+      })
     } catch (error) {
       throw error
     }
@@ -63,7 +72,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider)
+      const result = await signInWithPopup(auth, googleProvider)
+      
+      // Create user profile in Firestore if it's a new user
+      await createUserProfile(result.user.uid, {
+        displayName: result.user.displayName || 'User',
+        email: result.user.email || '',
+        createdAt: new Date().toISOString(),
+        provider: 'google',
+        photoURL: result.user.photoURL
+      })
     } catch (error) {
       throw error
     }
