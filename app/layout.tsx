@@ -12,6 +12,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'AURUM - Intelligent Gold Rate Analysis & Buying Guide',
   description: 'Compare physical and digital gold prices, analyze growth trends, and make smart gold investment decisions with AURUM.',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',

@@ -73,13 +73,13 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <main className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6 sm:space-y-8">
         <div>
           <div className="flex justify-center">
-            <img src="/assets/logo1.png" alt="AURUM Logo" className="h-16 w-16" />
+            <img src="/assets/logo1.png" alt="AURUM Logo" className="h-12 w-12 sm:h-16 sm:w-16" />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
+          <h2 className="mt-4 sm:mt-6 text-center text-2xl sm:text-3xl font-bold text-gray-900">
             Join <span className="font-bold text-gold-600 cursor-pointer">AURUM</span>
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
@@ -87,14 +87,14 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
                 Full Name <span className="text-red-500">*</span>

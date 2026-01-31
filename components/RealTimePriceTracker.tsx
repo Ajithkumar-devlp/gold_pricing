@@ -91,47 +91,47 @@ export default function RealTimePriceTracker() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+    <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-2">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
           <span>📊</span> Real-Time Price Tracker
         </h2>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
           <span>{getSourceIcon(priceSource)}</span>
           <span>Updates every minute</span>
         </div>
       </div>
 
       {/* Current Prices */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-gold-50 p-4 rounded-lg border border-gold-200">
-          <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="bg-gold-50 p-3 sm:p-4 rounded-lg border border-gold-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-              <div className="text-sm text-gold-600">Gold Price</div>
-              <div className="text-2xl font-bold text-gold-700">
+              <div className="text-xs sm:text-sm text-gold-600">Gold Price</div>
+              <div className="text-xl sm:text-2xl font-bold text-gold-700">
                 ₹{currentGoldPrice.toLocaleString()}/g
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               <div className="text-xs text-gold-500">Change</div>
-              <div className="text-lg font-semibold">
+              <div className="text-base sm:text-lg font-semibold">
                 {getLatestChange('gold')}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-              <div className="text-sm text-slate-600">Silver Price</div>
-              <div className="text-2xl font-bold text-slate-700">
+              <div className="text-xs sm:text-sm text-slate-600">Silver Price</div>
+              <div className="text-xl sm:text-2xl font-bold text-slate-700">
                 ₹{currentSilverPrice.toLocaleString()}/g
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               <div className="text-xs text-slate-500">Change</div>
-              <div className="text-lg font-semibold">
+              <div className="text-base sm:text-lg font-semibold">
                 {getLatestChange('silver')}
               </div>
             </div>

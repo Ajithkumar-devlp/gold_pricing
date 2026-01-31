@@ -78,80 +78,105 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <PriceAlerts />
-      <main className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 py-8">
+      <main className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 py-4 sm:py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <div className="mb-6 sm:mb-8">
+            {/* Title Section */}
+            <div className="text-center sm:text-left mb-4">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
                 Welcome to your <span className="font-bold text-gold-600 cursor-pointer">AURUM</span> Dashboard
               </h1>
-              <p className="text-lg text-gray-600">
+              <p className="text-sm sm:text-base lg:text-lg text-gray-600">
                 Hello {user?.displayName || 'User'}, track your precious metals investments in real-time
               </p>
             </div>
-            <div className="text-right space-y-2">
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="text-sm text-gray-500">Live Gold Price</div>
-                <div className="text-xl font-bold text-gold-600 flex items-center gap-2">
-                  ₹{currentGoldPrice.toLocaleString()}/g
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Live updates"></span>
+            
+            {/* Live Prices - Mobile Optimized */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+              <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-gold-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs sm:text-sm text-gold-600 font-medium">Live Gold Price</div>
+                    <div className="text-lg sm:text-xl font-bold text-gold-700">
+                      ₹{currentGoldPrice.toLocaleString()}/g
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Live updates"></span>
+                    <span className="text-xs text-green-600 font-medium">LIVE</span>
+                  </div>
                 </div>
               </div>
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="text-sm text-gray-500">Live Silver Price</div>
-                <div className="text-xl font-bold text-gray-600 flex items-center gap-2">
-                  ₹{currentSilverPrice.toLocaleString()}/g
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Live updates"></span>
+              
+              <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs sm:text-sm text-slate-600 font-medium">Live Silver Price</div>
+                    <div className="text-lg sm:text-xl font-bold text-slate-700">
+                      ₹{currentSilverPrice.toLocaleString()}/g
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Live updates"></span>
+                    <span className="text-xs text-green-600 font-medium">LIVE</span>
+                  </div>
                 </div>
               </div>
-              <div className="text-xs text-gray-500 bg-white rounded-lg p-2 shadow-sm">
-                <div className="flex items-center gap-1">
-                  {getPriceSourceDisplay(priceSource)}
-                  <span className="text-green-600">• Updates every minute</span>
+            </div>
+            
+            {/* Price Source Info - Collapsible on Mobile */}
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-blue-700">
+                  <span>{getPriceSourceDisplay(priceSource)}</span>
+                  <span>•</span>
+                  <span>Updates every minute</span>
                 </div>
-                <div>Updated: {formatLastUpdate(lastPriceUpdate)}</div>
-                <button
-                  onClick={refreshPrices}
-                  className="text-gold-600 hover:text-gold-700 underline mt-1 text-xs"
-                  title="Refresh prices"
-                >
-                  🔄 Refresh Now
-                </button>
+                <div className="flex items-center gap-2 text-xs text-blue-600">
+                  <span>Updated: {formatLastUpdate(lastPriceUpdate)}</span>
+                  <button
+                    onClick={refreshPrices}
+                    className="text-gold-600 hover:text-gold-700 underline font-medium touch-manipulation"
+                    title="Refresh prices"
+                  >
+                    🔄 Refresh
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Portfolio Overview */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gold-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">💰</span>
+                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-gold-100 rounded-full flex items-center justify-center">
+                  <span className="text-xl sm:text-2xl">💰</span>
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Total Portfolio</h3>
-                  <p className="text-2xl font-bold text-gold-600">₹{portfolio.currentValue.toLocaleString()}</p>
-                  <p className="text-sm text-gray-500">Investment: ₹{portfolio.totalInvestment.toLocaleString()}</p>
+                <div className="ml-3 sm:ml-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Total Portfolio</h3>
+                  <p className="text-lg sm:text-2xl font-bold text-gold-600">₹{portfolio.currentValue.toLocaleString()}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Investment: ₹{portfolio.totalInvestment.toLocaleString()}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
               <div className="flex items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                <div className={`w-10 sm:w-12 h-10 sm:h-12 rounded-full flex items-center justify-center ${
                   portfolio.totalReturns >= 0 ? 'bg-green-100' : 'bg-red-100'
                 }`}>
-                  <span className="text-2xl">{portfolio.totalReturns >= 0 ? '📈' : '📉'}</span>
+                  <span className="text-xl sm:text-2xl">{portfolio.totalReturns >= 0 ? '📈' : '📉'}</span>
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Total Returns</h3>
-                  <p className={`text-2xl font-bold ${
+                <div className="ml-3 sm:ml-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Total Returns</h3>
+                  <p className={`text-lg sm:text-2xl font-bold ${
                     portfolio.totalReturns >= 0 ? 'text-green-600' : 'text-red-600'
                   }`}>
                     {portfolio.totalReturns >= 0 ? '+' : ''}₹{Math.abs(portfolio.totalReturns).toLocaleString()}
                   </p>
-                  <p className={`text-sm ${
+                  <p className={`text-xs sm:text-sm ${
                     portfolio.returnsPercentage >= 0 ? 'text-green-500' : 'text-red-500'
                   }`}>
                     {portfolio.returnsPercentage >= 0 ? '+' : ''}{portfolio.returnsPercentage}% overall
@@ -160,83 +185,83 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gold-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">🥇</span>
+                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-gold-100 rounded-full flex items-center justify-center">
+                  <span className="text-xl sm:text-2xl">🥇</span>
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Gold Holdings</h3>
-                  <p className="text-2xl font-bold text-gold-600">{portfolio.totalGoldQuantity}g</p>
-                  <p className="text-sm text-gray-500">Value: ₹{portfolio.goldValue.toLocaleString()}</p>
+                <div className="ml-3 sm:ml-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Gold Holdings</h3>
+                  <p className="text-lg sm:text-2xl font-bold text-gold-600">{portfolio.totalGoldQuantity}g</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Value: ₹{portfolio.goldValue.toLocaleString()}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">🥈</span>
+                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                  <span className="text-xl sm:text-2xl">🥈</span>
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Silver Holdings</h3>
-                  <p className="text-2xl font-bold text-gray-600">{portfolio.totalSilverQuantity}g</p>
-                  <p className="text-sm text-gray-500">Value: ₹{portfolio.silverValue.toLocaleString()}</p>
+                <div className="ml-3 sm:ml-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Silver Holdings</h3>
+                  <p className="text-lg sm:text-2xl font-bold text-gray-600">{portfolio.totalSilverQuantity}g</p>
+                  <p className="text-xs sm:text-sm text-gray-500">Value: ₹{portfolio.silverValue.toLocaleString()}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Detailed Metal Breakdown */}
-          <div className="grid lg:grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
             {/* Gold Portfolio */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
                   <span>🥇</span> Gold Portfolio
                 </h2>
                 <div className="text-right">
-                  <div className="text-sm text-gray-500">Current Price</div>
-                  <div className="text-lg font-bold text-gold-600">₹{currentGoldPrice.toLocaleString()}/g</div>
+                  <div className="text-xs sm:text-sm text-gray-500">Current Price</div>
+                  <div className="text-sm sm:text-lg font-bold text-gold-600">₹{currentGoldPrice.toLocaleString()}/g</div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gold-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600">Total Quantity</div>
-                    <div className="text-xl font-bold text-gold-600">{portfolio.totalGoldQuantity}g</div>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="bg-gold-50 p-3 sm:p-4 rounded-lg">
+                    <div className="text-xs sm:text-sm text-gray-600">Total Quantity</div>
+                    <div className="text-lg sm:text-xl font-bold text-gold-600">{portfolio.totalGoldQuantity}g</div>
                   </div>
-                  <div className="bg-gold-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600">Current Value</div>
-                    <div className="text-xl font-bold text-gold-600">₹{portfolio.goldValue.toLocaleString()}</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600">Physical Gold</div>
-                    <div className="text-lg font-bold text-blue-600">{portfolio.physicalGold}g</div>
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <div className="text-sm text-gray-600">Digital Gold</div>
-                    <div className="text-lg font-bold text-purple-600">{portfolio.digitalGold}g</div>
+                  <div className="bg-gold-50 p-3 sm:p-4 rounded-lg">
+                    <div className="text-xs sm:text-sm text-gray-600">Current Value</div>
+                    <div className="text-lg sm:text-xl font-bold text-gold-600">₹{portfolio.goldValue.toLocaleString()}</div>
                   </div>
                 </div>
 
-                <div className={`p-4 rounded-lg ${
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
+                    <div className="text-xs sm:text-sm text-gray-600">Physical Gold</div>
+                    <div className="text-sm sm:text-lg font-bold text-blue-600">{portfolio.physicalGold}g</div>
+                  </div>
+                  <div className="bg-purple-50 p-3 sm:p-4 rounded-lg">
+                    <div className="text-xs sm:text-sm text-gray-600">Digital Gold</div>
+                    <div className="text-sm sm:text-lg font-bold text-purple-600">{portfolio.digitalGold}g</div>
+                  </div>
+                </div>
+
+                <div className={`p-3 sm:p-4 rounded-lg ${
                   portfolio.goldReturns >= 0 ? 'bg-green-50' : 'bg-red-50'
                 }`}>
                   <div className="flex justify-between items-center">
                     <div>
-                      <div className="text-sm text-gray-600">Gold Returns</div>
-                      <div className={`text-lg font-bold ${
+                      <div className="text-xs sm:text-sm text-gray-600">Gold Returns</div>
+                      <div className={`text-sm sm:text-lg font-bold ${
                         portfolio.goldReturns >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {portfolio.goldReturns >= 0 ? '+' : ''}₹{Math.abs(portfolio.goldReturns).toLocaleString()}
                       </div>
                     </div>
-                    <div className={`text-right text-lg font-bold ${
+                    <div className={`text-right text-sm sm:text-lg font-bold ${
                       portfolio.goldReturnsPercentage >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
                       {portfolio.goldReturnsPercentage >= 0 ? '+' : ''}{portfolio.goldReturnsPercentage}%

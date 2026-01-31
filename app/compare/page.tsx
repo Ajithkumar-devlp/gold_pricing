@@ -103,17 +103,17 @@ export default function ComparePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 py-8">
+    <main className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 py-4 sm:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 sm:mb-4">
             AURUM Precious Metals Comparison
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-sm sm:text-base lg:text-lg text-gray-600">
             Real-time gold and silver prices across 25+ platforms - Updated every minute
           </p>
-          <div className="mt-2 text-sm text-gray-500">
-            <span className="flex items-center justify-center gap-2">
+          <div className="mt-2 text-xs sm:text-sm text-gray-500">
+            <span className="flex items-center justify-center gap-2 flex-wrap">
               {getPriceSourceDisplay(source)} • Last updated: {formatLastUpdate(lastUpdated)}
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Live updates"></span>
             </span>
@@ -121,8 +121,8 @@ export default function ComparePage() {
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <div className="grid md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Metal Type
@@ -130,7 +130,7 @@ export default function ComparePage() {
               <select 
                 value={metalType}
                 onChange={(e) => setMetalType(e.target.value as 'gold' | 'silver' | 'both')}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent text-base"
               >
                 <option value="both">Compare Both</option>
                 <option value="gold">Gold Only</option>
@@ -145,7 +145,7 @@ export default function ComparePage() {
               <select 
                 value={investmentType}
                 onChange={(e) => setInvestmentType(e.target.value as 'physical' | 'digital' | 'both')}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent text-base"
               >
                 <option value="both">Compare Both</option>
                 <option value="physical">Physical Only</option>
@@ -153,7 +153,7 @@ export default function ComparePage() {
               </select>
             </div>
 
-            <div>
+            <div className="sm:col-span-2 lg:col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Weight (grams)
               </label>
@@ -163,34 +163,36 @@ export default function ComparePage() {
                 onChange={(e) => setWeight(Number(e.target.value))}
                 min="1"
                 max="1000"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent text-base"
               />
             </div>
           </div>
 
-          <button
-            onClick={handleRefreshPrices}
-            disabled={loading || platformLoading}
-            className="mt-4 bg-gold-500 hover:bg-gold-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-          >
-            {loading || platformLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Updating Prices...
-              </>
-            ) : (
-              <>
-                🔄 Update Real-Time Prices
-              </>
-            )}
-          </button>
-          
-          {/* Market Info */}
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-            <div className="text-sm text-blue-800">
-              <div className="flex justify-between items-center">
-                <span>Base Market Prices:</span>
-                <span>Gold: ₹{baseGoldPrice.toLocaleString()}/g | Silver: ₹{baseSilverPrice.toLocaleString()}/g</span>
+          <div className="mt-4 flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={handleRefreshPrices}
+              disabled={loading || platformLoading}
+              className="bg-gold-500 hover:bg-gold-600 disabled:bg-gray-400 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+            >
+              {loading || platformLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Updating Prices...
+                </>
+              ) : (
+                <>
+                  🔄 Update Real-Time Prices
+                </>
+              )}
+            </button>
+            
+            {/* Market Info */}
+            <div className="flex-1 p-3 bg-blue-50 rounded-lg">
+              <div className="text-xs sm:text-sm text-blue-800">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                  <span className="font-medium">Base Market Prices:</span>
+                  <span>Gold: ₹{baseGoldPrice.toLocaleString()}/g | Silver: ₹{baseSilverPrice.toLocaleString()}/g</span>
+                </div>
               </div>
             </div>
           </div>

@@ -204,32 +204,32 @@ export default function AnalysisPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 py-8">
+    <main className="min-h-screen bg-gradient-to-br from-gold-50 to-gold-100 py-4 sm:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 sm:mb-4 px-4">
             AURUM Investment Analysis
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-sm sm:text-base lg:text-lg text-gray-600 px-4">
             Comprehensive Analysis Tools for Smart Investment Decisions
           </p>
         </div>
 
         {/* Current Prices Dashboard */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Gold (Au)</h3>
-              <span className="text-2xl">🥇</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900">Gold (Au)</h3>
+              <span className="text-xl sm:text-2xl">🥇</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <p className="text-3xl font-bold text-gold-600">₹{(realTimeGoldPrice || currentGoldPrice).toLocaleString()}</p>
-                <p className="text-sm text-gray-500">per gram</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gold-600">₹{(realTimeGoldPrice || currentGoldPrice).toLocaleString()}</p>
+                <p className="text-xs sm:text-sm text-gray-500">per gram</p>
               </div>
               <div className="text-right">
                 {marketAnalysis && (
-                  <div className={`text-lg font-bold ${getTrendColor(marketAnalysis.goldTrend)}`}>
+                  <div className={`text-base sm:text-lg font-bold ${getTrendColor(marketAnalysis.goldTrend)}`}>
                     {getTrendIcon(marketAnalysis.goldTrend)} {marketAnalysis.goldTrend.toUpperCase()}
                   </div>
                 )}
@@ -237,19 +237,19 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Silver (Ag)</h3>
-              <span className="text-2xl">🥈</span>
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900">Silver (Ag)</h3>
+              <span className="text-xl sm:text-2xl">🥈</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <p className="text-3xl font-bold text-gray-600">₹{(realTimeSilverPrice || currentSilverPrice).toLocaleString()}</p>
-                <p className="text-sm text-gray-500">per gram</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-600">₹{(realTimeSilverPrice || currentSilverPrice).toLocaleString()}</p>
+                <p className="text-xs sm:text-sm text-gray-500">per gram</p>
               </div>
               <div className="text-right">
                 {marketAnalysis && (
-                  <div className={`text-lg font-bold ${getTrendColor(marketAnalysis.silverTrend)}`}>
+                  <div className={`text-base sm:text-lg font-bold ${getTrendColor(marketAnalysis.silverTrend)}`}>
                     {getTrendIcon(marketAnalysis.silverTrend)} {marketAnalysis.silverTrend.toUpperCase()}
                   </div>
                 )}
@@ -259,10 +259,39 @@ export default function AnalysisPage() {
         </div>
 
         {/* Analysis Controls */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">Analysis Type</label>
-            <div className="grid grid-cols-5 gap-2">
+            
+            {/* Mobile: Vertical Stack */}
+            <div className="block sm:hidden space-y-2">
+              {[
+                { key: 'market', label: 'Market Analysis', icon: '📊' },
+                { key: 'sip', label: 'SIP Analysis', icon: '💰' },
+                { key: 'single', label: 'Single Investment', icon: '💎' },
+                { key: 'portfolio', label: 'Portfolio Review', icon: '📈' },
+                { key: 'comparison', label: 'Platform Compare', icon: '🔍' }
+              ].map(({ key, label, icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveSection(key as any)}
+                  className={`w-full px-4 py-3 rounded-lg font-semibold transition-colors flex items-center gap-3 text-base touch-manipulation ${
+                    activeSection === key
+                      ? 'bg-gold-500 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span className="text-lg">{icon}</span>
+                  <span>{label}</span>
+                  {activeSection === key && (
+                    <span className="ml-auto">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            
+            {/* Desktop: Horizontal Grid */}
+            <div className="hidden sm:grid grid-cols-2 lg:grid-cols-5 gap-2">
               {[
                 { key: 'market', label: 'Market Analysis', icon: '📊' },
                 { key: 'sip', label: 'SIP Analysis', icon: '💰' },
@@ -280,7 +309,8 @@ export default function AnalysisPage() {
                   }`}
                 >
                   <span>{icon}</span>
-                  {label}
+                  <span className="hidden lg:inline">{label}</span>
+                  <span className="lg:hidden">{label.split(' ')[0]}</span>
                 </button>
               ))}
             </div>
@@ -321,11 +351,11 @@ export default function AnalysisPage() {
 
         {/* SIP Analysis Section */}
         {activeSection === 'sip' && (
-          <div className="space-y-8 mb-8">
-            <div className="grid lg:grid-cols-2 gap-8">
+          <div className="space-y-6 sm:space-y-8 mb-6 sm:mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
               {/* SIP Configuration */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">SIP Analysis Configuration</h2>
+              <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">SIP Analysis Configuration</h2>
                 
                 <div className="space-y-4">
                   <div>
@@ -334,7 +364,7 @@ export default function AnalysisPage() {
                       type="number"
                       value={sipAmount}
                       onChange={(e) => setSipAmount(Number(e.target.value))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent text-base"
                       min="1000"
                       step="500"
                     />
@@ -346,7 +376,7 @@ export default function AnalysisPage() {
                       type="number"
                       value={sipDuration}
                       onChange={(e) => setSipDuration(Number(e.target.value))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent text-base"
                       min="6"
                       max="60"
                     />
@@ -354,7 +384,7 @@ export default function AnalysisPage() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Metal Preference</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {[
                         { key: 'both', label: 'Both', icon: '🥇🥈' },
                         { key: 'gold', label: 'Gold Only', icon: '🥇' },
@@ -363,7 +393,7 @@ export default function AnalysisPage() {
                         <button
                           key={key}
                           onClick={() => setSipMetalType(key as any)}
-                          className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${
+                          className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm justify-center ${
                             sipMetalType === key
                               ? 'bg-gold-500 text-white'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -379,44 +409,44 @@ export default function AnalysisPage() {
               </div>
 
               {/* SIP Projections */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">SIP Projections</h2>
+              <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">SIP Projections</h2>
                 
                 {sipProjections.length > 0 && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <div className="text-sm text-blue-600">Total Investment</div>
-                        <div className="text-xl font-bold text-blue-800">₹{sipProjections[sipProjections.length - 1]?.investment.toLocaleString()}</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
+                        <div className="text-xs sm:text-sm text-blue-600">Total Investment</div>
+                        <div className="text-lg sm:text-xl font-bold text-blue-800">₹{sipProjections[sipProjections.length - 1]?.investment.toLocaleString()}</div>
                       </div>
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <div className="text-sm text-green-600">Projected Value</div>
-                        <div className="text-xl font-bold text-green-800">₹{sipProjections[sipProjections.length - 1]?.projectedValue.toLocaleString()}</div>
+                      <div className="bg-green-50 p-3 sm:p-4 rounded-lg">
+                        <div className="text-xs sm:text-sm text-green-600">Projected Value</div>
+                        <div className="text-lg sm:text-xl font-bold text-green-800">₹{sipProjections[sipProjections.length - 1]?.projectedValue.toLocaleString()}</div>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-purple-50 p-4 rounded-lg">
-                        <div className="text-sm text-purple-600">Expected Profit</div>
-                        <div className="text-xl font-bold text-purple-800">₹{sipProjections[sipProjections.length - 1]?.profit.toLocaleString()}</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="bg-purple-50 p-3 sm:p-4 rounded-lg">
+                        <div className="text-xs sm:text-sm text-purple-600">Expected Profit</div>
+                        <div className="text-lg sm:text-xl font-bold text-purple-800">₹{sipProjections[sipProjections.length - 1]?.profit.toLocaleString()}</div>
                       </div>
-                      <div className="bg-orange-50 p-4 rounded-lg">
-                        <div className="text-sm text-orange-600">Return %</div>
-                        <div className="text-xl font-bold text-orange-800">{sipProjections[sipProjections.length - 1]?.profitPercentage}%</div>
+                      <div className="bg-orange-50 p-3 sm:p-4 rounded-lg">
+                        <div className="text-xs sm:text-sm text-orange-600">Return %</div>
+                        <div className="text-lg sm:text-xl font-bold text-orange-800">{sipProjections[sipProjections.length - 1]?.profitPercentage}%</div>
                       </div>
                     </div>
                     
                     {sipMetalType !== 'silver' && (
-                      <div className="bg-gold-50 p-4 rounded-lg">
-                        <div className="text-sm text-gold-600">Gold Accumulated</div>
-                        <div className="text-lg font-bold text-gold-800">{sipProjections[sipProjections.length - 1]?.goldQuantity.toFixed(3)}g</div>
+                      <div className="bg-gold-50 p-3 sm:p-4 rounded-lg">
+                        <div className="text-xs sm:text-sm text-gold-600">Gold Accumulated</div>
+                        <div className="text-base sm:text-lg font-bold text-gold-800">{sipProjections[sipProjections.length - 1]?.goldQuantity.toFixed(3)}g</div>
                       </div>
                     )}
                     
                     {sipMetalType !== 'gold' && (
-                      <div className="bg-slate-50 p-4 rounded-lg">
-                        <div className="text-sm text-slate-600">Silver Accumulated</div>
-                        <div className="text-lg font-bold text-slate-800">{sipProjections[sipProjections.length - 1]?.silverQuantity.toFixed(3)}g</div>
+                      <div className="bg-slate-50 p-3 sm:p-4 rounded-lg">
+                        <div className="text-xs sm:text-sm text-slate-600">Silver Accumulated</div>
+                        <div className="text-base sm:text-lg font-bold text-slate-800">{sipProjections[sipProjections.length - 1]?.silverQuantity.toFixed(3)}g</div>
                       </div>
                     )}
                   </div>
